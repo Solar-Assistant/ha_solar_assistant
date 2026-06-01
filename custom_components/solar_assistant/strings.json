@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SolarAssistant",
+        "description": "Both authentication methods connect to your SolarAssistant unit on your local network.",
+        "menu_options": {
+          "local": "Local password",
+          "cloud": "Cloud API key"
+        }
+      },
+      "local": {
+        "title": "Local password",
+        "description": "Enter the IP/hostname of your unit and its web password. [How to find or set your web password](https://solar-assistant.io/help/access/password)",
+        "data": {
+          "host": "Host",
+          "password": "Web password"
+        }
+      },
+      "cloud": {
+        "title": "Cloud API key",
+        "description": "Generate an API key at https://solar-assistant.io/user/edit#api and paste it below.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "pick_site": {
+        "title": "Select a site",
+        "description": "Choose which site to add. Repeat the integration to add more.",
+        "data": {
+          "site_id": "Site"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the SolarAssistant unit. Check the host is reachable.",
+      "invalid_auth": "Authentication failed. Check the password or API key.",
+      "no_sites": "Your SolarAssistant account has no sites attached.",
+      "unknown": "Unexpected error. Check the Home Assistant logs."
+    },
+    "abort": {
+      "already_configured": "This SolarAssistant unit is already configured.",
+      "all_sites_configured": "All sites on your account are already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configuration",
+        "description": "## Metrics",
+        "submit": "Save",
+        "sections": {
+          "totals": {
+            "name": "Totals",
+            "data": {"topics": "Add metric"}
+          },
+          "inverters_status": {
+            "name": "Inverter status",
+            "data": {"topics": "Add metric"}
+          },
+          "inverters_settings": {
+            "name": "Inverter settings",
+            "data": {"topics": "Add metric"}
+          },
+          "inverters_info": {
+            "name": "Inverter info",
+            "data": {"topics": "Add metric"}
+          },
+          "batteries_status": {
+            "name": "Battery status",
+            "data": {"topics": "Add metric"}
+          },
+          "batteries_settings": {
+            "name": "Battery settings",
+            "data": {"topics": "Add metric"}
+          },
+          "batteries_info": {
+            "name": "Battery info",
+            "data": {"topics": "Add metric"}
+          }
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Could not reach the SolarAssistant unit to fetch its metric list.",
+      "no_metrics": "The unit returned no metrics.",
+      "unknown": "Unexpected error while fetching the metric list."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connection": {
+        "name": "Connection"
+      }
+    }
+  }
+}

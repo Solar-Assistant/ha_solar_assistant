@@ -1,0 +1,13 @@
+{
+  "domain": "solar_assistant",
+  "name": "SolarAssistant",
+  "version": "0.2.0",
+  "config_flow": true,
+  "documentation": "https://github.com/Solar-Assistant/ha_solar_assistant",
+  "issue_tracker": "https://github.com/Solar-Assistant/ha_solar_assistant/issues",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@Solar-Assistant"],
+  "iot_class": "local_push",
+  "integration_type": "device"
+}
