@@ -1,0 +1,15 @@
+# Commitizen configuration for ha_solar_assistant.
+#
+# The canonical version lives here (version_provider = "commitizen") and is
+# mirrored into the integration manifest on every bump via version_files. The
+# add-on (../ha_addons) shares this version but lives in a separate repo, so
+# commitizen cannot bump it - scripts/release.sh does that in lockstep.
+[tool.commitizen]
+version_provider = "commitizen"
+version = "0.2.0"
+tag_format = "v$version"
+update_changelog_on_bump = true
+major_version_zero = true
+version_files = [
+    'custom_components/solar_assistant/manifest.json:"version"',
+]
