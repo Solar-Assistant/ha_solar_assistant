@@ -398,7 +398,13 @@ class SolarAssistantOptionsFlow(OptionsFlow):
             except Exception as err:
                 _LOGGER.debug("Local REST to %s failed (%s) — trying cloud", local_ip, err)
         host = d.get(CONF_HOST) or ""
-        return await get_device_metrics(host, token=token, scheme="https")
+        return await get_device_metrics(
+            host,
+            token=token,
+            scheme="https",
+            site_id=int(d.get(CONF_SITE_ID, 0) or 0),
+            site_key=d.get(CONF_SITE_KEY, ""),
+        )
 
 
 # Group ordering used for non-totals sections. Groups not in this list are

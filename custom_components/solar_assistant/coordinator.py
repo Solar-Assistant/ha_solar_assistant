@@ -216,7 +216,13 @@ class SolarAssistantCoordinator:
                 return await get_device_metrics(local_ip, token=token)
             except Exception as err:
                 _LOGGER.debug("Local REST discovery to %s failed: %s", local_ip, err)
-        return await get_device_metrics(d.get(CONF_HOST, ""), token=token, scheme="https")
+        return await get_device_metrics(
+            d.get(CONF_HOST, ""),
+            token=token,
+            scheme="https",
+            site_id=int(d.get(CONF_SITE_ID, 0) or 0),
+            site_key=d.get(CONF_SITE_KEY, ""),
+        )
 
     async def _recover_ip(self) -> None:
         """Try to find the unit's new IP after prolonged connection failure."""
