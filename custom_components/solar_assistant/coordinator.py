@@ -13,7 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util.dt import utcnow
 
-from .py_solar_assistant import (
+from py_solar_assistant import (
     ConnectError,
     DeviceMetric,
     Metric,

@@ -20,7 +20,7 @@ from homeassistant.helpers import selector
 # "Add metric" via translations, regardless of which section it lives in.
 _SECTION_FIELD = "topics"
 
-from .py_solar_assistant import (
+from py_solar_assistant import (
     ConnectError,
     DeviceMetric,
     Options,

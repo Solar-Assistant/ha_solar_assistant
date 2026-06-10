@@ -72,12 +72,13 @@ By default, the integration subscribes to a curated set of the most useful live 
 
 Pull requests are welcome. The integration is a standard HA custom component under `custom_components/solar_assistant/`.
 
-The Python client is vendored from [`py_solar_assistant`](https://github.com/Solar-Assistant/py_solar_assistant) into `py_solar_assistant/`. To sync after upstream changes:
+The Python client is the external [`py-solar-assistant`](https://pypi.org/project/py-solar-assistant/) package, pinned in
+`manifest.json` (`requirements`) and installed by Home Assistant at setup. It is not vendored - to depend on a new client release, bump the
+pinned version in `manifest.json` once it is published to PyPI.
 
-```sh
-rsync -a --delete ../py_solar_assistant/src/py_solar_assistant/ \
-  custom_components/solar_assistant/py_solar_assistant/
-```
+To test an unreleased client against the integration on a running Home Assistant box, use [`scripts/release_local.sh`](scripts/release_local.sh),
+which builds [`py_solar_assistant`](https://github.com/Solar-Assistant/py_solar_assistant) from a sibling checkout and deploys it alongside
+the integration.
 
 ## Roadmap
 
