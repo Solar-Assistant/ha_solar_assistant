@@ -6,7 +6,7 @@
 # commitizen cannot bump it - scripts/release.sh does that in lockstep.
 [tool.commitizen]
 version_provider = "commitizen"
-version = "0.2.0"
+version = "0.1.0"
 tag_format = "v$version"
 update_changelog_on_bump = true
 major_version_zero = true

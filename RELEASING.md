@@ -24,8 +24,8 @@ The increment comes from the Conventional Commit types since the last tag:
 
 | Commit                                                | Bump                                           |
 | ----------------------------------------------------- | ---------------------------------------------- |
-| `fix:`, `refactor:`, `perf:`                          | patch (`0.2.0` -> `0.2.1`)                     |
-| `feat:`                                               | minor (`0.2.0` -> `0.3.0`)                     |
+| `fix:`, `refactor:`, `perf:`                          | patch (`0.1.0` -> `0.1.1`)                     |
+| `feat:`                                               | minor (`0.1.0` -> `0.2.0`)                     |
 | `!` / `BREAKING CHANGE:`                              | major - capped to a **minor** bump while `0.x` |
 | `build:`, `chore:`, `docs:`, `ci:`, `style:`, `test:` | none                                           |
 
