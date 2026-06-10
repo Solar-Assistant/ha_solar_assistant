@@ -51,6 +51,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_SITE_SEARCH_FIELD = "search"
+_SITE_SEARCH_LIMIT = 50
 
 
 class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -59,6 +61,7 @@ class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._api_key: str | None = None
         self._sites: list[Any] = []
+        self._search: str = ""
 
     @staticmethod
     @callback
@@ -141,25 +144,16 @@ class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            api_key = user_input[CONF_API_KEY].strip()
-            try:
-                async with SolarAssistantClient(api_key) as client:
-                    sites = await list_sites(client)
-            except SolarAssistantError as err:
-                _LOGGER.debug("Cloud sites fetch failed: %s", err)
-                errors["base"] = (
-                    "invalid_auth" if err.status in (401, 403) else "cannot_connect"
-                )
-            except Exception:
-                _LOGGER.exception("Unexpected error fetching sites")
-                errors["base"] = "unknown"
+            self._api_key = user_input[CONF_API_KEY].strip()
+            self._sites, err = await self._list_sites()
+            if err:
+                errors["base"] = err
+            elif not self._sites:
+                errors["base"] = "no_sites"
+            elif len(self._sites) >= _SITE_SEARCH_LIMIT:
+                return await self.async_step_search_site()
             else:
-                if not sites:
-                    errors["base"] = "no_sites"
-                else:
-                    self._api_key = api_key
-                    self._sites = sites
-                    return await self.async_step_pick_site()
+                return await self.async_step_pick_site()
 
         schema = vol.Schema({vol.Required(CONF_API_KEY): str})
         return self.async_show_form(
@@ -169,54 +163,146 @@ class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_pick_site(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Few sites were found, pick a site directly"""
         errors: dict[str, str] = {}
-        existing_unique_ids = {
+
+        if user_input is not None:
+            picked = user_input.get(CONF_SITE_ID)
+            if picked:
+                result = await self._create_cloud_entry(int(picked))
+                if isinstance(result, str):
+                    errors["base"] = result
+                else:
+                    return result
+
+        options = self._site_options()
+        if not options:
+            return self.async_abort(reason="all_sites_configured")
+
+        return self.async_show_form(
+            step_id="pick_site",
+            data_schema=vol.Schema(self._site_field(options, required=True)),
+            errors=errors,
+        )
+
+    async def async_step_search_site(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Many sites were found, search for a site then pick a match.
+
+        Re-entrant: a changed term re-runs the search; an unchanged term plus a
+        pick adds it.
+        """
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            submitted = (user_input.get(_SITE_SEARCH_FIELD) or "").strip()
+            picked = user_input.get(CONF_SITE_ID)
+            if picked and submitted == self._search:
+                result = await self._create_cloud_entry(int(picked))
+                if isinstance(result, str):
+                    errors["base"] = result
+                else:
+                    return result
+            else:
+                self._search = submitted
+                if self._search:
+                    self._sites, err = await self._list_sites(search=self._search)
+                    if err:
+                        errors["base"] = err
+                else:
+                    self._sites = []
+
+        options = self._site_options() if self._search else []
+        if self._search and not errors and not options:
+            errors["base"] = "no_sites_match"
+
+        fields: dict[Any, Any] = {
+            vol.Optional(_SITE_SEARCH_FIELD, default=self._search): str,
+        }
+        fields.update(self._site_field(options, required=False))
+        return self.async_show_form(
+            step_id="search_site", data_schema=vol.Schema(fields), errors=errors
+        )
+
+    async def _list_sites(self, **filters: Any) -> tuple[list[Any], str | None]:
+        """List sites, optionally with a free-text ``search=`` term (a
+        prefix/full-text match). 
+
+        Returns (sites, error_key).
+        """
+        try:
+            async with SolarAssistantClient(self._api_key) as client:
+                sites = await list_sites(client, limit=_SITE_SEARCH_LIMIT, **filters)
+            return sites, None
+        except SolarAssistantError as err:
+            _LOGGER.debug("Site query failed: %s", err)
+            return [], "invalid_auth" if err.status in (401, 403) else "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected error querying sites")
+            return [], "unknown"
+
+    def _site_field(self, options: list[Any], *, required: bool) -> dict[Any, Any]:
+        """Build the site-dropdown schema field, pre-selecting a lone match."""
+        if not options:
+            return {}
+        key_cls = vol.Required if required else vol.Optional
+        key = (
+            key_cls(CONF_SITE_ID, default=options[0]["value"])
+            if len(options) == 1
+            else key_cls(CONF_SITE_ID)
+        )
+        return {
+            key: selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options, mode=selector.SelectSelectorMode.DROPDOWN
+                )
+            )
+        }
+
+    def _site_options(self) -> list[Any]:
+        """Dropdown options from the current sites, hiding configured ones."""
+        existing = {
             entry.unique_id for entry in self.hass.config_entries.async_entries(DOMAIN)
         }
         choices = {
             str(s.id): f"{s.name} ({s.inverter or 'unknown'})"
             for s in self._sites
-            if f"cloud:{s.id}" not in existing_unique_ids
+            if f"cloud:{s.id}" not in existing
         }
+        return [
+            selector.SelectOptionDict(value=value, label=label)
+            for value, label in sorted(choices.items(), key=lambda kv: kv[1].lower())
+        ]
 
-        if not choices:
-            return self.async_abort(reason="all_sites_configured")
-
-        if user_input is not None:
-            site_id = int(user_input[CONF_SITE_ID])
-            site = next((s for s in self._sites if s.id == site_id), None)
-            if site is None:
-                errors["base"] = "unknown"
-            else:
-                try:
-                    async with SolarAssistantClient(self._api_key) as client:
-                        auth = await authorize_site(client, site_id)
-                except SolarAssistantError as err:
-                    _LOGGER.debug("authorize_site failed: %s", err)
-                    errors["base"] = "cannot_connect"
-                except Exception:
-                    _LOGGER.exception("Unexpected error authorizing site")
-                    errors["base"] = "unknown"
-                else:
-                    await self.async_set_unique_id(f"cloud:{site_id}")
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(
-                        title=f"SolarAssistant — {auth.site_name or site.name}",
-                        data={
-                            CONF_AUTH_METHOD: AUTH_CLOUD,
-                            CONF_API_KEY: self._api_key,
-                            CONF_SITE_ID: auth.site_id,
-                            CONF_SITE_NAME: auth.site_name or site.name,
-                            CONF_SITE_KEY: auth.site_key,
-                            CONF_TOKEN: auth.token,
-                            CONF_HOST: auth.host,
-                            CONF_LOCAL_IP: auth.local_ip,
-                        },
-                    )
-
-        schema = vol.Schema({vol.Required(CONF_SITE_ID): vol.In(choices)})
-        return self.async_show_form(
-            step_id="pick_site", data_schema=schema, errors=errors
+    async def _create_cloud_entry(self, site_id: int) -> ConfigFlowResult | str:
+        """Authorize a site and create its entry; return the result or an error key."""
+        site = next((s for s in self._sites if s.id == site_id), None)
+        if site is None:
+            return "unknown"
+        try:
+            async with SolarAssistantClient(self._api_key) as client:
+                auth = await authorize_site(client, site_id)
+        except SolarAssistantError as err:
+            _LOGGER.debug("authorize_site failed: %s", err)
+            return "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected error authorizing site")
+            return "unknown"
+        await self.async_set_unique_id(f"cloud:{site_id}")
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title=f"SolarAssistant - {auth.site_name or site.name}",
+            data={
+                CONF_AUTH_METHOD: AUTH_CLOUD,
+                CONF_API_KEY: self._api_key,
+                CONF_SITE_ID: auth.site_id,
+                CONF_SITE_NAME: auth.site_name or site.name,
+                CONF_SITE_KEY: auth.site_key,
+                CONF_TOKEN: auth.token,
+                CONF_HOST: auth.host,
+                CONF_LOCAL_IP: auth.local_ip,
+            },
         )
 
 
@@ -429,4 +515,3 @@ def _mdns_site_id_sync(zc: Any, host: str) -> int | None:
     time.sleep(MDNS_SCAN_TIMEOUT_S)
     browser.cancel()
     return found[0] if found else None
-

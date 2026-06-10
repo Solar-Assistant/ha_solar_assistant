@@ -30,12 +30,21 @@
         "data": {
           "site_id": "Site"
         }
+      },
+      "search_site": {
+        "title": "Find your site",
+        "description": "Your account has many sites. Enter a site name and submit to search, then select the match. Already-configured sites are hidden.",
+        "data": {
+          "search": "Site name",
+          "site_id": "Site"
+        }
       }
     },
     "error": {
       "cannot_connect": "Could not reach the SolarAssistant unit. Check the host is reachable.",
       "invalid_auth": "Authentication failed. Check the password or API key.",
       "no_sites": "Your SolarAssistant account has no sites attached.",
+      "no_sites_match": "No matching site found. Type a name to search. Already-configured sites are hidden.",
       "unknown": "Unexpected error. Check the Home Assistant logs."
     },
     "abort": {
