@@ -114,6 +114,12 @@ Fix: a client-side watchdog that flips the sensor unavailable if no `data` event
 - **Zeroconf discovery** - add a `zeroconf` entry to `manifest.json` and `async_step_zeroconf` to `config_flow.py` so HA auto-discovers
   units on the LAN and shows them in the **Discovered** card.
 
+### Pre-release validation
+
+Run [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest) as a `scripts/release.sh` preflight so manifest and integration
+errors are caught before a release is cut. hassfest is not packaged for standalone use, so this runs against a local Home Assistant core
+checkout.
+
 ## License
 
 Apache 2.0 - see [LICENSE](LICENSE).
