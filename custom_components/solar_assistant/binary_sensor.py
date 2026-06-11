@@ -31,7 +31,6 @@ class SolarAssistantConnectionSensor(BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "connection"
-    _attr_name = "Connection"
 
     def __init__(
         self,
