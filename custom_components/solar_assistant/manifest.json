@@ -1,15 +1,15 @@
 {
   "domain": "solar_assistant",
   "name": "SolarAssistant",
-  "version": "0.2.0",
-  "config_flow": true,
-  "documentation": "https://github.com/Solar-Assistant/ha_solar_assistant",
-  "issue_tracker": "https://github.com/Solar-Assistant/ha_solar_assistant/issues",
-  "requirements": ["py-solar-assistant==0.1.1"],
-  "loggers": ["py_solar_assistant"],
-  "dependencies": [],
   "after_dependencies": ["zeroconf"],
   "codeowners": ["@Solar-Assistant"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Solar-Assistant/ha_solar_assistant",
+  "integration_type": "device",
   "iot_class": "local_push",
-  "integration_type": "device"
+  "issue_tracker": "https://github.com/Solar-Assistant/ha_solar_assistant/issues",
+  "loggers": ["py_solar_assistant"],
+  "requirements": ["py-solar-assistant==0.1.1"],
+  "version": "0.2.0"
 }
