@@ -113,3 +113,12 @@ Fix: a client-side watchdog that flips the sensor unavailable if no `data` event
   custom repository URL.
 - **Zeroconf discovery** - add a `zeroconf` entry to `manifest.json` and `async_step_zeroconf` to `config_flow.py` so HA auto-discovers
   units on the LAN and shows them in the **Discovered** card.
+
+## License
+
+Apache 2.0 - see [LICENSE](LICENSE).
+
+This licence covers the Home Assistant integration in this repository only. The SolarAssistant platform, including the downloadable device
+software and cloud infrastructure, is proprietary and distributed under separate terms. See [NOTICE](NOTICE) for the copyright and scope
+statement.
+

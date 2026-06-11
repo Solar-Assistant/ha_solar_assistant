@@ -1,0 +1,9 @@
+SolarAssistant Home Assistant integration
+Copyright 2026 SolarAssistant
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The Apache License applies solely to the Home Assistant integration in this
+repository. It does not cover the SolarAssistant platform, including the
+downloadable device software and cloud infrastructure, which are proprietary
+and distributed under separate terms.
