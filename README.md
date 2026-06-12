@@ -18,6 +18,7 @@ native entities: live telemetry sensors plus writable settings for inverter para
 
 - Home Assistant 2024.11 or later
 - A [SolarAssistant unit](https://solar-assistant.io/shop) on your LAN, or a SolarAssistant cloud account
+- SolarAssistant version **2026-06-12 or later** on the unit - the release that added Home Assistant integration support
 
 ## Installation
 
