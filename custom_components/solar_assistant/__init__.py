@@ -1,8 +1,6 @@
 """SolarAssistant — Home Assistant integration entry points."""
 from __future__ import annotations
 
-import fnmatch
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -32,15 +30,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Purge entities whose topic matches no enabled glob, then reload the entry."""
-    enabled = entry.options.get(CONF_ENABLED_TOPICS)
-    if enabled is not None:
+    """Drop sensors that fall outside the new enabled-topic selection, then reload the entry.
+
+    Only read-only sensor entities are governed by the topic selection. The
+    settings platforms (number/select/switch) and the connection binary_sensor
+    are always created by their own platforms, so they are left untouched.
+    """
+    if entry.options.get(CONF_ENABLED_TOPICS) is not None:
         registry = er.async_get(hass)
+        coordinator: SolarAssistantCoordinator = hass.data[DOMAIN][entry.entry_id]
         prefix = f"{entry.unique_id}_"
         for ent in list(er.async_entries_for_config_entry(registry, entry.entry_id)):
-            if not ent.unique_id.startswith(prefix):
+            if ent.domain != "sensor" or not ent.unique_id.startswith(prefix):
                 continue
             topic = ent.unique_id[len(prefix):]
-            if not any(fnmatch.fnmatchcase(topic, g) for g in enabled):
+            if not coordinator.should_create_sensor(topic):
                 registry.async_remove(ent.entity_id)
     await hass.config_entries.async_reload(entry.entry_id)

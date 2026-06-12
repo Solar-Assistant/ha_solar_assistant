@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import logging
 import socket as _socket
 from datetime import datetime
@@ -284,10 +285,18 @@ class SolarAssistantCoordinator:
             site_key=d.get(CONF_SITE_KEY, ""),
         )
 
-    def _build_topic_filters(self) -> list[TopicFilter]:
-        """Server-side subscription list. Always includes settings topics for live updates."""
+    def enabled_sensor_globs(self) -> list[str]:
+        """Topic glob patterns enabled as read-only sensors."""
         explicit = self.entry.options.get(CONF_ENABLED_TOPICS)
-        base: list[str] = list(explicit) if explicit is not None else list(DEFAULT_CURATED_GLOBS)
+        return list(explicit) if explicit is not None else list(DEFAULT_CURATED_GLOBS)
+
+    def should_create_sensor(self, topic: str) -> bool:
+        """Whether a read-only metric is enabled and should become a sensor."""
+        return any(fnmatch.fnmatchcase(topic, g) for g in self.enabled_sensor_globs())
+
+    def _build_topic_filters(self) -> list[TopicFilter]:
+        """Server-side subscription list. Settings topics are always added so they receive updates."""
+        base = self.enabled_sensor_globs()
         base_set = set(base)
         for topic, defn in self.definitions.items():
             if defn.get("platform") in ("number", "select", "switch") and topic not in base_set:

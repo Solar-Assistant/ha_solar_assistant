@@ -42,6 +42,8 @@ async def async_setup_entry(
         defn = coordinator.definitions.get(topic)
         if defn is None or not _is_for_us(defn):
             return
+        if not coordinator.should_create_sensor(topic):
+            return
         known.add(topic)
         async_add_entities([SolarAssistantSensor(coordinator, entry, topic, defn)])
 
@@ -52,6 +54,8 @@ async def async_setup_entry(
 
     for topic, defn in list(coordinator.definitions.items()):
         if not _is_for_us(defn):
+            continue
+        if not coordinator.should_create_sensor(topic):
             continue
         if topic not in known:
             known.add(topic)
