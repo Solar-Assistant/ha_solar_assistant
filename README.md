@@ -91,6 +91,16 @@ Maintainers cut releases from a developer machine with `scripts/release.sh`. See
 
 ## Roadmap
 
+### Energy Dashboard support
+
+The integration exposes only live **power** metrics (`W`, `state_class: measurement`), which the Home Assistant
+[Energy Dashboard](https://www.home-assistant.io/docs/energy/) rejects - it needs cumulative **energy** sensors (`kWh`,
+`state_class: total_increasing`). SolarAssistant tracks these totals (grid in/out, battery in/out, PV, load) but only publishes them on the
+MQTT path, not the local REST/WebSocket API the integration reads from.
+
+Fix: expose those energy totals through the metrics API. No integration change is needed - it already passes `device_class`, `state_class`,
+and `unit_of_measurement` through untouched.
+
 ### Finalize LAN IP change recovery
 
 After ~5 minutes of connection failure the integration already scans mDNS (`_solar-assistant._tcp`) to find the unit's new IP and reconnect
