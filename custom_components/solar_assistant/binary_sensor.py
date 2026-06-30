@@ -9,13 +9,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo, EntityCategory
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import SolarAssistantCoordinator
+from .entity import unit_device_info
 
 
 async def async_setup_entry(
@@ -39,14 +39,8 @@ class SolarAssistantConnectionSensor(BinarySensorEntity):
     ) -> None:
         self._coordinator = coordinator
         # See entity.py for why we key on entry.unique_id rather than entry.entry_id.
-        scope = entry.unique_id
-        self._attr_unique_id = f"{scope}_connection"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{scope}_unit")},
-            name=entry.title,
-            manufacturer="SolarAssistant",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_unique_id = f"{entry.unique_id}_connection"
+        self._attr_device_info = unit_device_info(entry)
 
     @property
     def is_on(self) -> bool:

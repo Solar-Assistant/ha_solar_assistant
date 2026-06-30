@@ -177,6 +177,9 @@ class SolarAssistantCoordinator:
         try:
             filters = self._build_topic_filters()
             await sock.subscribe_metrics(self._on_metric, *filters)
+            # System metrics arrive on a separate "system" push (on join + every
+            # refresh), independent of the topic filters above.
+            await sock.subscribe_system_metrics(self._on_system_metrics)
             self._set_connection_state(True, host=sock.connected_host)
             await sock.listen()
         finally:
@@ -292,6 +295,9 @@ class SolarAssistantCoordinator:
 
     def should_create_sensor(self, topic: str) -> bool:
         """Whether a read-only metric is enabled and should become a sensor."""
+        if topic.startswith("system/"):
+            # System diagnostics are a small fixed set the unit always exposes.
+            return True
         return any(fnmatch.fnmatchcase(topic, g) for g in self.enabled_sensor_globs())
 
     def _build_topic_filters(self) -> list[TopicFilter]:
@@ -361,6 +367,21 @@ class SolarAssistantCoordinator:
             async_dispatcher_send(self.hass, self.signal_new_metric, topic)
         async_dispatcher_send(self.hass, self.signal_metric_update, topic)
 
+    @callback
+    def _on_system_metrics(self, metrics: list[Metric]) -> None:
+        # The unit re-pushes the full system snapshot on join and on every
+        # refresh, so this both creates the entities and live-updates them.
+        # Populate the whole snapshot before dispatching, so a freshly created
+        # entity sees its siblings (the unit device reads software_version).
+        new_topics = [m.topic for m in metrics if m.topic not in self.definitions]
+        for m in metrics:
+            self.definitions[m.topic] = _system_metric_defn(m)
+            self.data[m.topic] = m.value
+        for topic in new_topics:
+            async_dispatcher_send(self.hass, self.signal_new_metric, topic)
+        for m in metrics:
+            async_dispatcher_send(self.hass, self.signal_metric_update, m.topic)
+
 
 class _ReauthRequired(Exception):
     """Internal: cloud token rejected, refresh needed."""
@@ -411,3 +432,16 @@ def _metric_defn(m: Any) -> dict[str, Any]:
         "payload_on": m.payload_on,
         "payload_off": m.payload_off,
     }
+
+
+def _system_metric_defn(m: Any) -> dict[str, Any]:
+    """A ``_metric_defn`` enriched with presentation metadata derived from the unit."""
+    # /api/v1/system rows (REST and the WS "system" push) carry no presentation
+    # metadata, so derive it from the unit as MQTT discovery does (discovery.ex):
+    # °C → temperature, MB → data_size, both measurement.
+    device_class = {"°C": "temperature", "MB": "data_size"}.get(m.unit)
+    defn = _metric_defn(m)
+    defn["platform"] = "sensor"
+    defn["device_class"] = defn.get("device_class") or device_class
+    defn["state_class"] = defn.get("state_class") or ("measurement" if device_class else None)
+    return defn

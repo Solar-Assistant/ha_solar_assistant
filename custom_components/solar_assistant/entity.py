@@ -5,11 +5,31 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
+from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo, Entity, EntityCategory
 
 from .const import DOMAIN
 from .coordinator import SolarAssistantCoordinator
+
+
+def unit_device_info(entry: ConfigEntry, sw_version: str | None = None) -> DeviceInfo:
+    """DeviceInfo for the SolarAssistant unit itself.
+
+    Shared by the connection diagnostic and the system metrics so both group
+    under one device rather than two unit-level devices. Keyed on
+    ``entry.unique_id`` (see :class:`SolarAssistantMetricEntity` for why, not
+    ``entry_id``). ``sw_version`` mirrors the unit's MQTT-discovery ``sw`` field.
+    """
+    info = DeviceInfo(
+        identifiers={(DOMAIN, f"{entry.unique_id}_unit")},
+        name=entry.title,
+        manufacturer="SolarAssistant",
+        entry_type=DeviceEntryType.SERVICE,
+    )
+    if sw_version:
+        info["sw_version"] = sw_version
+    return info
 
 
 def device_label_and_id(defn: dict[str, Any]) -> tuple[str, str]:
@@ -56,12 +76,21 @@ class SolarAssistantMetricEntity(Entity):
         if defn.get("group") == "Info":
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-        device_label, device_id = device_label_and_id(defn)
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{scope}_{device_id}")},
-            name=device_label,
-            manufacturer="SolarAssistant",
-        )
+        if defn.get("device") == "system":
+            # System metrics describe the unit itself, so they share the unit
+            # device with the connection diagnostic instead of a device of their
+            # own. The software version doubles as the device's sw_version.
+            sw = coordinator.data.get("system/software_version")
+            self._attr_device_info = unit_device_info(
+                entry, sw_version=sw if isinstance(sw, str) else None
+            )
+        else:
+            device_label, device_id = device_label_and_id(defn)
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, f"{scope}_{device_id}")},
+                name=device_label,
+                manufacturer="SolarAssistant",
+            )
 
     @property
     def available(self) -> bool:
