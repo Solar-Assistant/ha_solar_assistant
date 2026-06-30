@@ -25,6 +25,7 @@ from py_solar_assistant import (
     authorize_site,
     connect,
     get_device_metrics,
+    get_device_site_id,
     set_metric,
 )
 from .const import (
@@ -166,6 +167,10 @@ class SolarAssistantCoordinator:
         # without this they would never appear as entities.
         await self._rest_discovery()
 
+        # The unit is reachable right now - capture its site_id if we don't have one,
+        # so IP-change recovery can mDNS-scan for it once the IP moves.
+        await self._store_site_id()
+
         try:
             sock = await connect(opts)
         except ConnectError as err:
@@ -228,6 +233,23 @@ class SolarAssistantCoordinator:
             site_key=d.get(CONF_SITE_KEY, ""),
         )
 
+    async def _store_site_id(self) -> None:
+        """Store the unit's site_id for local entries that don't have one."""
+        d = self.entry.data
+        if d.get(CONF_AUTH_METHOD, AUTH_LOCAL) != AUTH_LOCAL or d.get(CONF_SITE_ID):
+            return  # cloud entries already carry site_id; nothing to do if set
+        try:
+            site_id = await get_device_site_id(d[CONF_HOST], password=d[CONF_PASSWORD])
+        except SolarAssistantError as err:
+            _LOGGER.debug("Failed to get site_id over REST: %s", err)
+            return
+        if site_id is None:
+            return
+        _LOGGER.info("Stored site_id=%s for IP-change recovery", site_id)
+        self.hass.config_entries.async_update_entry(
+            self.entry, data={**d, CONF_SITE_ID: site_id}
+        )
+
     async def _recover_ip(self) -> None:
         """Try to find the unit's new IP after prolonged connection failure."""
         d = self.entry.data
@@ -235,8 +257,8 @@ class SolarAssistantCoordinator:
         site_id = d.get(CONF_SITE_ID)
 
         if site_id is None:
-            # TODO: fetch site_id from local REST API once SA backend exposes it,
-            # so IP recovery works for local-password entries added before mDNS was available.
+            # site_id is back-filled from the unit's REST API while it's reachable
+            # (see _store_site_id); missing here means that never succeeded.
             _LOGGER.debug("IP recovery skipped: no site_id stored for this entry")
             return
 

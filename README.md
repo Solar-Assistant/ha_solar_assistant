@@ -101,14 +101,6 @@ MQTT path, not the local REST/WebSocket API the integration reads from.
 Fix: expose those energy totals through the metrics API. No integration change is needed - it already passes `device_class`, `state_class`,
 and `unit_of_measurement` through untouched.
 
-### Finalize LAN IP change recovery
-
-After ~5 minutes of connection failure the integration already scans mDNS (`_solar-assistant._tcp`) to find the unit's new IP and reconnect
-automatically. For cloud entries it also re-runs `authorize_site` (at most once per 12 hours) to get a refreshed local IP.
-
-The missing piece: for local-password entries added without mDNS available, no `site_id` is stored and recovery cannot trigger. This will be
-complete once the SA local REST API exposes `site_id`, at which point the integration can look it up at setup time regardless of mDNS.
-
 ### Surface SA → inverter/battery link state
 
 `binary_sensor.<entry>_connection` reflects whether HA can reach the SolarAssistant WebSocket, but not whether the inverter or battery is

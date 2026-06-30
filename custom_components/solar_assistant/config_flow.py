@@ -29,6 +29,7 @@ from py_solar_assistant import (
     authorize_site,
     connect,
     get_device_metrics,
+    get_device_site_id,
     list_sites,
 )
 from .const import (
@@ -115,10 +116,13 @@ class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 except Exception:
                     site_id = None
+                if site_id is None:
+                    try:
+                        site_id = await get_device_site_id(host, password=password)
+                    except SolarAssistantError as err:
+                        _LOGGER.debug("Failed to get site_id over REST: %s", err)
                 if site_id is not None:
                     data[CONF_SITE_ID] = site_id
-                # If mDNS is unavailable, site_id is not stored and IP recovery
-                # will not work until the SA local API exposes it (see coordinator TODO).
                 return self.async_create_entry(
                     title=f"SolarAssistant ({host})",
                     data=data,
@@ -227,7 +231,7 @@ class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def _list_sites(self, **filters: Any) -> tuple[list[Any], str | None]:
         """List sites, optionally with a free-text ``search=`` term (a
-        prefix/full-text match). 
+        prefix/full-text match).
 
         Returns (sites, error_key).
         """
