@@ -10,7 +10,8 @@ is no manual bump flag.
 
 Versioning is also **coupled**: the integration (`manifest.json`) and the add-on (`../ha_addons/solar_assistant/config.yaml`) share one
 version, because the add-on downloads the integration release tagged with its own version. Commitizen bumps and tags this repo; the script
-then sets, commits, and pushes the add-on version in lockstep (commitizen can't do it - the add-on lives in a separate repo).
+then sets, commits, and pushes the add-on version in lockstep (commitizen can't do it - the add-on lives in a separate repo). It also
+mirrors this repo's `CHANGELOG.md` into the add-on folder, since Supervisor reads release notes for the update dialog from there.
 
 ## Prerequisites
 

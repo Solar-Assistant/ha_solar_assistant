@@ -93,6 +93,7 @@ ZIP_NAME="solar_assistant.zip"
 ZIP_PATH="$ROOT/dist/$ZIP_NAME"
 ADDONS_ROOT="$ROOT/../ha_addons"
 ADDON_CONFIG="$ADDONS_ROOT/solar_assistant/config.yaml"
+ADDON_CHANGELOG="$ADDONS_ROOT/solar_assistant/CHANGELOG.md"
 
 build_zip() {
   info "Building $ZIP_NAME"
@@ -174,7 +175,7 @@ if $DRY_RUN; then
   echo
   info "Plan (not executed):"
   echo "    - bump $CURRENT -> $NEXT in manifest.json + .cz.toml, update CHANGELOG.md, commit, tag $TAG"
-  echo "    - set ../ha_addons/solar_assistant/config.yaml to $NEXT and commit it"
+  echo "    - set ../ha_addons/solar_assistant/config.yaml to $NEXT, mirror CHANGELOG.md, and commit both"
   echo "    - build $ZIP_NAME from the bumped tree"
   echo "    - push $BRANCH + $TAG (this repo) and $BRANCH (../ha_addons)"
   echo "    - create GitHub release $TAG with $ZIP_NAME attached"
@@ -185,7 +186,7 @@ fi
 echo
 info "About to release $TAG. This will:"
 echo "    - bump $CURRENT -> $NEXT, update CHANGELOG.md, commit, and tag $TAG (this repo)"
-echo "    - set + commit ../ha_addons/solar_assistant/config.yaml to $NEXT"
+echo "    - set ../ha_addons/solar_assistant/config.yaml to $NEXT, mirror CHANGELOG.md, and commit both"
 echo "    - build $ZIP_NAME and attach it to GitHub release $TAG"
 echo "    - push $BRANCH + $TAG (this repo) and $BRANCH (../ha_addons)"
 echo
@@ -203,7 +204,12 @@ info "Bumping to $NEXT and updating CHANGELOG.md"
 info "Setting ../ha_addons/solar_assistant/config.yaml -> $NEXT"
 set_yaml_version "$ADDON_CONFIG" "$NEXT"
 [ "$(read_yaml_version "$ADDON_CONFIG" || true)" = "$NEXT" ] || die "failed to update $ADDON_CONFIG"
-git -C "$ADDONS_ROOT" commit -m "chore: release $TAG" -- "solar_assistant/config.yaml"
+# Mirror the integration changelog into the add-on folder so the Supervisor
+# update dialog shows release notes (Supervisor reads CHANGELOG.md from there,
+# not from the GitHub release). cz bump --changelog refreshed it just above.
+cp "$ROOT/CHANGELOG.md" "$ADDON_CHANGELOG"
+git -C "$ADDONS_ROOT" commit -m "chore: release $TAG" -- \
+  "solar_assistant/config.yaml" "solar_assistant/CHANGELOG.md"
 
 # --- Build the zip (after the bump so it carries $NEXT) --------------------
 build_zip
