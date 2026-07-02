@@ -128,6 +128,17 @@ Fix: a client-side watchdog that flips the sensor unavailable if no `data` event
 - **Zeroconf discovery** - add a `zeroconf` entry to `manifest.json` and `async_step_zeroconf` to `config_flow.py` so HA auto-discovers
   units on the LAN and shows them in the **Discovered** card.
 
+### Self-updating integration
+
+Updating the add-on rebuilds it but does not run it, so the integration only updates once the user manually **Start**s the add-on - easy to
+forget, leaving it silently stale.
+
+Fix: let the integration update itself. It already runs inside Home Assistant, so add an `UpdateEntity` (`update.py`) whose `latest_version`
+tracks the newest GitHub release and whose `async_install` unpacks that release over `custom_components/solar_assistant/`, then raises a
+"restart to finish" repair for the user to apply. This surfaces through Home Assistant's built-in update card and works on every install
+type; the add-on stays only as the first-install bootstrap. Optionally wire `UpdateEntityFeature.RELEASE_NOTES` to the changelog so the card
+shows what changed.
+
 ### Pre-release validation
 
 Run [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest) as a `scripts/release.sh` preflight so manifest and integration
