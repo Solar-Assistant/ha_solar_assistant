@@ -11,5 +11,5 @@
   "issue_tracker": "https://github.com/Solar-Assistant/ha_solar_assistant/issues",
   "loggers": ["py_solar_assistant"],
   "requirements": ["py-solar-assistant==0.3.0"],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
