@@ -11,6 +11,8 @@ native entities: live telemetry sensors plus writable settings for inverter para
   over WebSocket.
 - **Writable settings**: max charge/discharge current, work mode schedules, stop/start capacities, and other inverter parameters exposed as
   `number`, `select`, and `switch` entities.
+- **Energy Dashboard**: cumulative energy totals (grid in/out, battery in/out, PV, load) exposed as `kWh` / `total_increasing`
+  sensors, ready to drop straight into the Home Assistant [Energy Dashboard](https://www.home-assistant.io/docs/energy/).
 - **Local or cloud**: works directly on your LAN with your web password, or via the SolarAssistant cloud with an API key.
 - **Multi-unit**: add one config entry per SolarAssistant unit.
 
@@ -18,7 +20,9 @@ native entities: live telemetry sensors plus writable settings for inverter para
 
 - Home Assistant 2024.11 or later
 - A [SolarAssistant unit](https://solar-assistant.io/shop) on your LAN, or a SolarAssistant cloud account
-- SolarAssistant version **2026-06-12 or later** on the unit - the release that added Home Assistant integration support
+- SolarAssistant on the unit: 
+    - **2026-06-12 or later** for core telemetry and settings
+    - **2026-07-02 or later** to enable the Energy Dashboard and system diagnostics sensors, such as temperature and free storage
 
 ## Installation
 
@@ -90,16 +94,6 @@ the integration.
 Maintainers cut releases from a developer machine with `scripts/release.sh`. See [RELEASING.md](RELEASING.md) for the full process.
 
 ## Roadmap
-
-### Energy Dashboard support
-
-The integration exposes only live **power** metrics (`W`, `state_class: measurement`), which the Home Assistant
-[Energy Dashboard](https://www.home-assistant.io/docs/energy/) rejects - it needs cumulative **energy** sensors (`kWh`,
-`state_class: total_increasing`). SolarAssistant tracks these totals (grid in/out, battery in/out, PV, load) but only publishes them on the
-MQTT path, not the local REST/WebSocket API the integration reads from.
-
-Fix: expose those energy totals through the metrics API. No integration change is needed - it already passes `device_class`, `state_class`,
-and `unit_of_measurement` through untouched.
 
 ### Surface SA → inverter/battery link state
 
