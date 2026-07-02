@@ -41,6 +41,23 @@ Home Assistant will restart automatically and the integration is ready to config
    reach `/config` without a terminal is via the **Samba share** app (Settings → Apps → Samba share). The **Terminal & SSH** app also works.
 3. Restart Home Assistant.
 
+## Updating
+
+### Via Add-on
+
+New releases show up as an update on the **SolarAssistant** app.
+
+1. Go to **Settings → Apps → SolarAssistant** and click **Update**.
+2. When it finishes, click **Start**.
+
+**Update** fetches the new add-on version and **Start** applies it - downloading the matching integration release and restarting Home
+Assistant Core. If the update does not show yet, click **Check for updates** in the top-right of **Settings → Apps**.
+
+### Manual
+
+Repeat the manual install for the [latest release](https://github.com/Solar-Assistant/ha_solar_assistant/releases/latest): copy the new
+`custom_components/solar_assistant` folder over the existing one, then restart Home Assistant.
+
 ## Configuration
 
 After the installation, go to **Settings → Devices & Services → Add integration** and search for **SolarAssistant**.
