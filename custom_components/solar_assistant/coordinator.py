@@ -457,13 +457,14 @@ def _metric_defn(m: Any) -> dict[str, Any]:
 
 
 def _system_metric_defn(m: Any) -> dict[str, Any]:
-    """A ``_metric_defn`` enriched with presentation metadata derived from the unit."""
-    # /api/v1/system rows (REST and the WS "system" push) carry no presentation
-    # metadata, so derive it from the unit as MQTT discovery does (discovery.ex):
-    # °C → temperature, MB → data_size, both measurement.
-    device_class = {"°C": "temperature", "MB": "data_size"}.get(m.unit)
+    """A ``_metric_defn`` defaulting platform to sensor, with a fallback for old units."""
     defn = _metric_defn(m)
-    defn["platform"] = "sensor"
-    defn["device_class"] = defn.get("device_class") or device_class
-    defn["state_class"] = defn.get("state_class") or ("measurement" if device_class else None)
+    defn["platform"] = defn.get("platform") or "sensor"
+    # Units on SolarAssistant build 2026-07-02 or earlier do not send device_class/state_class
+    # on the system push, so fall back to deriving it.
+    if defn.get("device_class") is None:
+        device_class = {"°C": "temperature", "°F": "temperature", "MB": "data_size"}.get(m.unit)
+        defn["device_class"] = device_class
+        if defn.get("state_class") is None and device_class:
+            defn["state_class"] = "measurement"
     return defn
