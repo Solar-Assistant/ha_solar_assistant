@@ -41,6 +41,15 @@ Home Assistant will restart automatically and the integration is ready to config
    reach `/config` without a terminal is via the **Samba share** app (Settings → Apps → Samba share). The **Terminal & SSH** app also works.
 3. Restart Home Assistant.
 
+### Via HACS
+
+1. Install [HACS](https://hacs.xyz) if you don't have it yet.
+2. In HACS, open the **⋮** menu (top right) and select **Custom repositories**.
+3. Add `https://github.com/Solar-Assistant/ha_solar_assistant` with category **Integration**.
+4. Find **SolarAssistant** in HACS, click **Download**, then restart Home Assistant.
+
+> **Note**: SolarAssistant is not on the HACS default list yet, so adding the custom repository URL above is required.
+
 ## Updating
 
 ### Via Add-on
