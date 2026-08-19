@@ -123,41 +123,6 @@ the integration.
 
 Maintainers cut releases from a developer machine with `scripts/release.sh`. See [RELEASING.md](RELEASING.md) for the full process.
 
-## Roadmap
-
-### Surface SA → inverter/battery link state
-
-`binary_sensor.<entry>_connection` reflects whether HA can reach the SolarAssistant WebSocket, but not whether the inverter or battery is
-actually connected to the SA unit. If the hardware cable is pulled, the WebSocket stays up and the sensor stays green while data silently
-stops.
-
-Fix: a client-side watchdog that flips the sensor unavailable if no `data` event arrives within ~60 s. Also add `last_data_at`,
-`inverter_connected`, and `battery_connected` as state attributes so the user can see which leg is broken.
-
-### Distribution
-
-- **HACS default list** - submit the repo to `github.com/hacs/default` so users can find it by searching "SolarAssistant" without adding a
-  custom repository URL.
-- **Zeroconf discovery** - add a `zeroconf` entry to `manifest.json` and `async_step_zeroconf` to `config_flow.py` so HA auto-discovers
-  units on the LAN and shows them in the **Discovered** card.
-
-### Self-updating integration
-
-Updating the add-on rebuilds it but does not run it, so the integration only updates once the user manually **Start**s the add-on - easy to
-forget, leaving it silently stale.
-
-Fix: let the integration update itself. It already runs inside Home Assistant, so add an `UpdateEntity` (`update.py`) whose `latest_version`
-tracks the newest GitHub release and whose `async_install` unpacks that release over `custom_components/solar_assistant/`, then raises a
-"restart to finish" repair for the user to apply. This surfaces through Home Assistant's built-in update card and works on every install
-type; the add-on stays only as the first-install bootstrap. Optionally wire `UpdateEntityFeature.RELEASE_NOTES` to the changelog so the card
-shows what changed.
-
-### Pre-release validation
-
-Run [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest) as a `scripts/release.sh` preflight so manifest and integration
-errors are caught before a release is cut. hassfest is not packaged for standalone use, so this runs against a local Home Assistant core
-checkout.
-
 ## License
 
 Apache 2.0 - see [LICENSE](LICENSE).

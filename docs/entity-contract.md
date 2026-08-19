@@ -58,4 +58,5 @@ not read from inverter energy registers.
 
 **Staleness.** Entities currently follow the WebSocket connection only. If the cable between the SolarAssistant unit and an inverter or battery
 is pulled, the connection stays up and the last values are re-broadcast, so a frozen reading is indistinguishable from a live one. Do not treat
-a recent state change as proof of fresh data. Marking entities unavailable on device-level data loss is on the roadmap in the [README](../README.md#roadmap).
+a recent state change as proof of fresh data. Marking entities unavailable on device-level data loss is tracked in
+[#14](https://github.com/Solar-Assistant/ha_solar_assistant/issues/14).
