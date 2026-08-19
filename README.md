@@ -103,6 +103,10 @@ Entity names and counts depend on your inverter model. A typical single-inverter
 By default, the integration subscribes to a curated set of the most useful live metrics. To choose which entities appear, go to Settings →
 Devices & Services → SolarAssistant → **Configure**.
 
+### Integration
+
+See the [Entity contract](docs/entity-contract.md) if you are building an integration on top of the SolarAssistant entities.
+
 ## Contributing
 
 Pull requests are welcome. The integration is a standard HA custom component under `custom_components/solar_assistant/`.
