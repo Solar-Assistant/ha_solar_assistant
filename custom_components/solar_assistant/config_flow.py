@@ -345,21 +345,6 @@ class SolarAssistantOptionsFlow(OptionsFlow):
         if not form_sections:
             return self.async_abort(reason="no_metrics")
 
-        if user_input is not None:
-            selected: list[str] = []
-            for sec in form_sections.values():
-                inner = user_input.get(sec["key"]) or {}
-                selected.extend(inner.get(_SECTION_FIELD, []) or [])
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_ENABLED_TOPICS: sorted(set(selected)),
-                    CONF_MIN_UPDATE_INTERVAL_S: user_input.get(
-                        CONF_MIN_UPDATE_INTERVAL_S, DEFAULT_MIN_UPDATE_INTERVAL_S
-                    ),
-                },
-            )
-
         from .const import DEFAULT_CURATED_GLOBS
         current_globs = self._entry.options.get(CONF_ENABLED_TOPICS)
         if current_globs is None:
@@ -367,6 +352,28 @@ class SolarAssistantOptionsFlow(OptionsFlow):
         current_min_interval = self._entry.options.get(
             CONF_MIN_UPDATE_INTERVAL_S, DEFAULT_MIN_UPDATE_INTERVAL_S
         )
+
+        if user_input is not None:
+            selected: list[str] = []
+            for sec in form_sections.values():
+                if sec["key"] in user_input:
+                    inner = user_input.get(sec["key"]) or {}
+                    selected.extend(inner.get(_SECTION_FIELD, []) or [])
+                else:
+                    # Section wasn't part of this submission (e.g. a partial
+                    # options update via the API rather than the full form) —
+                    # keep whatever was already enabled for it rather than
+                    # silently clearing those metrics' entities.
+                    selected.extend(g for g in current_globs if g in sec["choices"])
+            return self.async_create_entry(
+                title="",
+                data={
+                    CONF_ENABLED_TOPICS: sorted(set(selected)),
+                    CONF_MIN_UPDATE_INTERVAL_S: user_input.get(
+                        CONF_MIN_UPDATE_INTERVAL_S, current_min_interval
+                    ),
+                },
+            )
 
         schema_dict: dict[Any, Any] = {
             vol.Optional(
