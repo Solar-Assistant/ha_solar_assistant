@@ -103,6 +103,13 @@ Entity names and counts depend on your inverter model. A typical single-inverter
 By default, the integration subscribes to a curated set of the most useful live metrics. To choose which entities appear, go to Settings →
 Devices & Services → SolarAssistant → **Configure**.
 
+### Update throttling
+
+Some metrics (grid frequency, instantaneous power, …) can push several times a second, which floods the recorder with little value. Set a
+**Minimum update interval** in Settings → Devices & Services → SolarAssistant → **Configure** to limit how often a metric's Home Assistant
+state is written — 0 (the default) disables throttling. A metric's state always writes immediately when its value crosses zero, regardless
+of this setting, since zero commonly marks a meaningful change (grid down, PV/load/battery power stopping).
+
 ### Integration
 
 See the [Entity contract](docs/entity-contract.md) if you are building an integration on top of the SolarAssistant entities.

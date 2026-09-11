@@ -18,6 +18,11 @@ AUTH_CLOUD = "cloud"
 
 # Options keys
 CONF_ENABLED_TOPICS = "enabled_topics"
+CONF_MIN_UPDATE_INTERVAL_S = "min_update_interval_s"
+
+# Default minimum interval between HA state writes for a given metric (seconds).
+# 0 disables throttling entirely, preserving pre-existing behavior.
+DEFAULT_MIN_UPDATE_INTERVAL_S = 0
 
 # Curated default — same set the SA server uses when no client filter is sent.
 # Mirrors @default_topics in solar_assistant_web/channels/metrics.ex.

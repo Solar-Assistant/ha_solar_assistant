@@ -58,6 +58,12 @@
         "title": "Configuration",
         "description": "## Metrics",
         "submit": "Save",
+        "data": {
+          "min_update_interval_s": "Minimum update interval (seconds)"
+        },
+        "data_description": {
+          "min_update_interval_s": "Limit how often a metric's Home Assistant state is written, to reduce recorder/history load from fast-changing values. 0 disables throttling. A metric always updates immediately when its value crosses zero, regardless of this setting."
+        },
         "sections": {
           "totals": {
             "name": "Totals",

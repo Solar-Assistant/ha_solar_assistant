@@ -37,11 +37,13 @@ from .const import (
     CONF_ENABLED_TOPICS,
     CONF_HOST,
     CONF_LOCAL_IP,
+    CONF_MIN_UPDATE_INTERVAL_S,
     CONF_PASSWORD,
     CONF_SITE_ID,
     CONF_SITE_KEY,
     CONF_TOKEN,
     DEFAULT_CURATED_GLOBS,
+    DEFAULT_MIN_UPDATE_INTERVAL_S,
     IP_RESCAN_AFTER_S,
     IP_RESCAN_INTERVAL_S,
     MDNS_SCAN_TIMEOUT_S,
@@ -66,6 +68,8 @@ class SolarAssistantCoordinator:
         self.data: dict[str, Any] = {}
         self._task: asyncio.Task | None = None
         self._stopping = False
+        # Per-topic throttling of HA state writes (see _should_dispatch_update)
+        self._last_dispatch: dict[str, datetime] = {}
         # Connection state
         self.is_connected: bool = False
         self.connected_host: str | None = None
@@ -87,6 +91,12 @@ class SolarAssistantCoordinator:
     @property
     def signal_connection_state(self) -> str:
         return signal_connection_state(self.entry.entry_id)
+
+    @property
+    def min_update_interval_s(self) -> float:
+        return self.entry.options.get(
+            CONF_MIN_UPDATE_INTERVAL_S, DEFAULT_MIN_UPDATE_INTERVAL_S
+        )
 
     def _set_connection_state(
         self, connected: bool, *, host: str | None = None, error: str | None = None
@@ -383,11 +393,35 @@ class SolarAssistantCoordinator:
             return
         topic = m.topic
         is_new = topic not in self.definitions
+        old_value = self.data.get(topic)
         self.definitions[topic] = _metric_defn(m)
         self.data[topic] = m.value
         if is_new:
             async_dispatcher_send(self.hass, self.signal_new_metric, topic)
-        async_dispatcher_send(self.hass, self.signal_metric_update, topic)
+            async_dispatcher_send(self.hass, self.signal_metric_update, topic)
+            return
+        if self._should_dispatch_update(topic, old_value, m.value):
+            async_dispatcher_send(self.hass, self.signal_metric_update, topic)
+
+    def _should_dispatch_update(self, topic: str, old_value: Any, new_value: Any) -> bool:
+        """Whether an existing metric's HA state should be written now.
+
+        Fast-changing metrics (grid frequency, instantaneous power, ...) can push
+        several times a second, which floods the recorder with little value.
+        ``min_update_interval_s`` throttles how often a topic's state is written,
+        but a value crossing zero always writes immediately — zero commonly marks
+        a meaningful state change (grid down, PV/load/battery power stopping)
+        that a dashboard or automation shouldn't see delayed.
+        """
+        min_interval = self.min_update_interval_s
+        if min_interval <= 0 or _is_zero(new_value) != _is_zero(old_value):
+            self._last_dispatch[topic] = utcnow()
+            return True
+        last = self._last_dispatch.get(topic)
+        if last is not None and (utcnow() - last).total_seconds() < min_interval:
+            return False
+        self._last_dispatch[topic] = utcnow()
+        return True
 
     @callback
     def _on_system_metrics(self, metrics: list[Metric]) -> None:
@@ -433,6 +467,14 @@ def _mdns_scan_for_site(zc: Any, site_id: int) -> str | None:
     time.sleep(MDNS_SCAN_TIMEOUT_S)
     browser.cancel()
     return found[0] if found else None
+
+
+def _is_zero(value: Any) -> bool:
+    """Whether a metric value is numerically zero (non-numeric values are never zero)."""
+    try:
+        return float(value) == 0.0
+    except (TypeError, ValueError):
+        return False
 
 
 def _metric_defn(m: Any) -> dict[str, Any]:
