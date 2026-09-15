@@ -112,6 +112,6 @@ class SolarAssistantMetricEntity(Entity):
         )
 
     @callback
-    def _on_update(self, topic: str) -> None:
-        if topic == self._topic:
+    def _on_update(self, topics: frozenset[str]) -> None:
+        if self._topic in topics:
             self.async_write_ha_state()

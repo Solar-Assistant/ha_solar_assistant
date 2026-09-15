@@ -40,12 +40,14 @@ from .const import (
     CONF_ENABLED_TOPICS,
     CONF_HOST,
     CONF_LOCAL_IP,
+    CONF_MIN_UPDATE_INTERVAL_S,
     CONF_PASSWORD,
     CONF_SITE_ID,
     CONF_SITE_KEY,
     CONF_SITE_NAME,
     CONF_TOKEN,
     DEFAULT_LOCAL_HOST,
+    DEFAULT_MIN_UPDATE_INTERVAL_S,
     DOMAIN,
     MDNS_SCAN_TIMEOUT_S,
     MDNS_SERVICE_TYPE,
@@ -343,22 +345,49 @@ class SolarAssistantOptionsFlow(OptionsFlow):
         if not form_sections:
             return self.async_abort(reason="no_metrics")
 
-        if user_input is not None:
-            selected: list[str] = []
-            for sec in form_sections.values():
-                inner = user_input.get(sec["key"]) or {}
-                selected.extend(inner.get(_SECTION_FIELD, []) or [])
-            return self.async_create_entry(
-                title="",
-                data={CONF_ENABLED_TOPICS: sorted(set(selected))},
-            )
-
         from .const import DEFAULT_CURATED_GLOBS
         current_globs = self._entry.options.get(CONF_ENABLED_TOPICS)
         if current_globs is None:
             current_globs = list(DEFAULT_CURATED_GLOBS)
+        current_min_interval = self._entry.options.get(
+            CONF_MIN_UPDATE_INTERVAL_S, DEFAULT_MIN_UPDATE_INTERVAL_S
+        )
 
-        schema_dict: dict[Any, Any] = {}
+        if user_input is not None:
+            selected: list[str] = []
+            for sec in form_sections.values():
+                if sec["key"] in user_input:
+                    inner = user_input.get(sec["key"]) or {}
+                    selected.extend(inner.get(_SECTION_FIELD, []) or [])
+                else:
+                    # Section wasn't part of this submission (e.g. a partial
+                    # options update via the API rather than the full form) —
+                    # keep whatever was already enabled for it rather than
+                    # silently clearing those metrics' entities.
+                    selected.extend(g for g in current_globs if g in sec["choices"])
+            return self.async_create_entry(
+                title="",
+                data={
+                    CONF_ENABLED_TOPICS: sorted(set(selected)),
+                    CONF_MIN_UPDATE_INTERVAL_S: user_input.get(
+                        CONF_MIN_UPDATE_INTERVAL_S, current_min_interval
+                    ),
+                },
+            )
+
+        schema_dict: dict[Any, Any] = {
+            vol.Optional(
+                CONF_MIN_UPDATE_INTERVAL_S, default=current_min_interval
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=3600,
+                    step=1,
+                    unit_of_measurement="s",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+        }
         for sec in form_sections.values():
             choices = sec["choices"]
             default = [
