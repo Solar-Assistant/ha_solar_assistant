@@ -55,6 +55,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+_SYSTEM_PREFIX = "system/"
+_SYSTEM_TOPICS = f"{_SYSTEM_PREFIX}*"
+
 
 class SolarAssistantCoordinator:
     """Owns one WebSocket per config entry, streams metrics into HA."""
@@ -182,9 +185,6 @@ class SolarAssistantCoordinator:
         try:
             filters = self._build_topic_filters()
             await sock.subscribe_metrics(self._on_metric, *filters)
-            # System metrics arrive on a separate "system" push (on join + every
-            # refresh), independent of the topic filters above.
-            await sock.subscribe_system_metrics(self._on_system_metrics)
             self._set_connection_state(True, host=sock.connected_host)
             await sock.listen()
         finally:
@@ -206,7 +206,7 @@ class SolarAssistantCoordinator:
                 continue
             topic = m.topic
             is_new = topic not in self.definitions
-            self.definitions[topic] = _metric_defn(m)
+            self.definitions[topic] = _defn_for(m)
             self.data[topic] = m.value
             if is_new:
                 async_dispatcher_send(self.hass, self.signal_new_metric, topic)
@@ -317,7 +317,7 @@ class SolarAssistantCoordinator:
 
     def should_create_sensor(self, topic: str) -> bool:
         """Whether a read-only metric is enabled and should become a sensor."""
-        if topic.startswith("system/"):
+        if topic.startswith(_SYSTEM_PREFIX):
             # System diagnostics are a small fixed set the unit always exposes.
             return True
         return any(fnmatch.fnmatchcase(topic, g) for g in self.enabled_sensor_globs())
@@ -329,6 +329,11 @@ class SolarAssistantCoordinator:
         for topic, defn in self.definitions.items():
             if defn.get("platform") in ("number", "select", "switch") and topic not in base_set:
                 base.append(topic)
+        # The server leaves the unit's own diagnostics out unless asked for them.
+        # On units that predate streaming them, the library falls back to the
+        # separate "system" push, still filtered by this list.
+        if _SYSTEM_TOPICS not in base_set:
+            base.append(_SYSTEM_TOPICS)
         return [TopicFilter(topic=t) for t in base]
 
     async def set_setting(self, topic: str, value: Any) -> None:
@@ -383,26 +388,11 @@ class SolarAssistantCoordinator:
             return
         topic = m.topic
         is_new = topic not in self.definitions
-        self.definitions[topic] = _metric_defn(m)
+        self.definitions[topic] = _defn_for(m)
         self.data[topic] = m.value
         if is_new:
             async_dispatcher_send(self.hass, self.signal_new_metric, topic)
         async_dispatcher_send(self.hass, self.signal_metric_update, topic)
-
-    @callback
-    def _on_system_metrics(self, metrics: list[Metric]) -> None:
-        # The unit re-pushes the full system snapshot on join and on every
-        # refresh, so this both creates the entities and live-updates them.
-        # Populate the whole snapshot before dispatching, so a freshly created
-        # entity sees its siblings (the unit device reads software_version).
-        new_topics = [m.topic for m in metrics if m.topic not in self.definitions]
-        for m in metrics:
-            self.definitions[m.topic] = _system_metric_defn(m)
-            self.data[m.topic] = m.value
-        for topic in new_topics:
-            async_dispatcher_send(self.hass, self.signal_new_metric, topic)
-        for m in metrics:
-            async_dispatcher_send(self.hass, self.signal_metric_update, m.topic)
 
 
 class _ReauthRequired(Exception):
@@ -454,6 +444,12 @@ def _metric_defn(m: Any) -> dict[str, Any]:
         "payload_on": m.payload_on,
         "payload_off": m.payload_off,
     }
+
+
+def _defn_for(m: Any) -> dict[str, Any]:
+    if m.topic.startswith(_SYSTEM_PREFIX):
+        return _system_metric_defn(m)
+    return _metric_defn(m)
 
 
 def _system_metric_defn(m: Any) -> dict[str, Any]:
