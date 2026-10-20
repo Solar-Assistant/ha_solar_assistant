@@ -415,6 +415,10 @@ class SolarAssistantOptionsFlow(OptionsFlow):
 # appended in alphabetical order so a future "Diagnostics" group still appears.
 _GROUP_ORDER = ("Status", "Settings", "Info")
 _TOTALS_DEVICE = "totals"
+# Newer units list their own diagnostics (CPU, storage, …) under system/.
+# The coordinator always creates those sensors, so a checkbox would do nothing.
+# Matched by topic prefix, the same test the coordinator uses.
+_SYSTEM_PREFIX = "system/"
 
 
 def _build_sections(
@@ -431,7 +435,7 @@ def _build_sections(
     """
     buckets: dict[tuple[str, str], list[DeviceMetric]] = {}
     for m in metrics:
-        if m.group == "Ignore" or not m.device:
+        if m.group == "Ignore" or not m.device or m.topic.startswith(_SYSTEM_PREFIX):
             continue
         buckets.setdefault((m.device, m.group), []).append(m)
 
