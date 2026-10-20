@@ -1,11 +1,14 @@
 """SolarAssistant — Home Assistant integration entry points."""
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import CONF_ENABLED_TOPICS, DOMAIN
+from .const import CONF_ENABLED_TOPICS, DOMAIN, SYSTEM_PREFIX
 from .coordinator import SolarAssistantCoordinator
 
 PLATFORMS = ["binary_sensor", "number", "select", "sensor", "switch"]
@@ -19,6 +22,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    if entry.version > 1:
+        return False
+    if entry.minor_version < 2:
+        hass.config_entries.async_update_entry(
+            entry, options=_with_system_metrics_enabled(entry.options), minor_version=2
+        )
+    return True
+
+
+def _with_system_metrics_enabled(options: Mapping[str, Any]) -> dict[str, Any]:
+    """Saved selections predate selectable system metrics, so add `system/*` to keep them on."""
+    options = dict(options)
+    topics = options.get(CONF_ENABLED_TOPICS)
+    if topics is not None:
+        options[CONF_ENABLED_TOPICS] = sorted({*topics, f"{SYSTEM_PREFIX}*"})
+    return options
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

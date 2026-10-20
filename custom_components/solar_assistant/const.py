@@ -34,6 +34,12 @@ DEFAULT_CURATED_GLOBS = (
     "inverter_*/temperature",
 )
 
+SYSTEM_PREFIX = "system/"
+# Never deselectable: docs/entity-contract.md names site_id as the unit's
+# identifier, and software_version is the unit device's firmware version.
+ALWAYS_ON_SYSTEM_TOPICS = ("system/site_id", "system/software_version")
+DEFAULT_ENABLED_GLOBS = (*DEFAULT_CURATED_GLOBS, f"{SYSTEM_PREFIX}*")
+
 # Default host suggestion (mDNS) for the very first local-password unit
 DEFAULT_LOCAL_HOST = "solar-assistant.local"
 

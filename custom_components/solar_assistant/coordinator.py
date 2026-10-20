@@ -29,6 +29,7 @@ from py_solar_assistant import (
     set_metric,
 )
 from .const import (
+    ALWAYS_ON_SYSTEM_TOPICS,
     AUTH_CLOUD,
     AUTH_LOCAL,
     CLOUD_IP_REFRESH_INTERVAL_S,
@@ -41,22 +42,20 @@ from .const import (
     CONF_SITE_ID,
     CONF_SITE_KEY,
     CONF_TOKEN,
-    DEFAULT_CURATED_GLOBS,
+    DEFAULT_ENABLED_GLOBS,
     IP_RESCAN_AFTER_S,
     IP_RESCAN_INTERVAL_S,
     MDNS_SCAN_TIMEOUT_S,
     MDNS_SERVICE_TYPE,
     RECONNECT_INITIAL_S,
     RECONNECT_MAX_S,
+    SYSTEM_PREFIX,
     signal_connection_state,
     signal_metric_update,
     signal_new_metric,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-_SYSTEM_PREFIX = "system/"
-_SYSTEM_TOPICS = f"{_SYSTEM_PREFIX}*"
 
 
 class SolarAssistantCoordinator:
@@ -313,12 +312,11 @@ class SolarAssistantCoordinator:
     def enabled_sensor_globs(self) -> list[str]:
         """Topic glob patterns enabled as read-only sensors."""
         explicit = self.entry.options.get(CONF_ENABLED_TOPICS)
-        return list(explicit) if explicit is not None else list(DEFAULT_CURATED_GLOBS)
+        return list(explicit) if explicit is not None else list(DEFAULT_ENABLED_GLOBS)
 
     def should_create_sensor(self, topic: str) -> bool:
         """Whether a read-only metric is enabled and should become a sensor."""
-        if topic.startswith(_SYSTEM_PREFIX):
-            # System diagnostics are a small fixed set the unit always exposes.
+        if topic in ALWAYS_ON_SYSTEM_TOPICS:
             return True
         return any(fnmatch.fnmatchcase(topic, g) for g in self.enabled_sensor_globs())
 
@@ -329,11 +327,11 @@ class SolarAssistantCoordinator:
         for topic, defn in self.definitions.items():
             if defn.get("platform") in ("number", "select", "switch") and topic not in base_set:
                 base.append(topic)
-        # The server leaves the unit's own diagnostics out unless asked for them.
-        # On units that predate streaming them, the library falls back to the
-        # separate "system" push, still filtered by this list.
-        if _SYSTEM_TOPICS not in base_set:
-            base.append(_SYSTEM_TOPICS)
+        # The server streams system/* only when named, and older units' fallback
+        # push is filtered by this same list.
+        for topic in ALWAYS_ON_SYSTEM_TOPICS:
+            if not any(fnmatch.fnmatchcase(topic, g) for g in base):
+                base.append(topic)
         return [TopicFilter(topic=t) for t in base]
 
     async def set_setting(self, topic: str, value: Any) -> None:
@@ -447,7 +445,7 @@ def _metric_defn(m: Any) -> dict[str, Any]:
 
 
 def _defn_for(m: Any) -> dict[str, Any]:
-    if m.topic.startswith(_SYSTEM_PREFIX):
+    if m.topic.startswith(SYSTEM_PREFIX):
         return _system_metric_defn(m)
     return _metric_defn(m)
 

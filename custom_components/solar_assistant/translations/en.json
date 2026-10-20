@@ -86,6 +86,14 @@
           "batteries_info": {
             "name": "Battery info",
             "data": {"topics": "Add metric"}
+          },
+          "system_status": {
+            "name": "System status",
+            "data": {"topics": "Add metric"}
+          },
+          "system_info": {
+            "name": "System info",
+            "data": {"topics": "Add metric"}
           }
         }
       }

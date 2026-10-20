@@ -33,6 +33,7 @@ from py_solar_assistant import (
     list_sites,
 )
 from .const import (
+    ALWAYS_ON_SYSTEM_TOPICS,
     AUTH_CLOUD,
     AUTH_LOCAL,
     CONF_API_KEY,
@@ -45,6 +46,7 @@ from .const import (
     CONF_SITE_KEY,
     CONF_SITE_NAME,
     CONF_TOKEN,
+    DEFAULT_ENABLED_GLOBS,
     DEFAULT_LOCAL_HOST,
     DOMAIN,
     MDNS_SCAN_TIMEOUT_S,
@@ -58,6 +60,7 @@ _SITE_SEARCH_LIMIT = 50
 
 class SolarAssistantConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._api_key: str | None = None
@@ -343,31 +346,25 @@ class SolarAssistantOptionsFlow(OptionsFlow):
         if not form_sections:
             return self.async_abort(reason="no_metrics")
 
+        current_globs = self._entry.options.get(CONF_ENABLED_TOPICS)
+        if current_globs is None:
+            current_globs = list(DEFAULT_ENABLED_GLOBS)
+
         if user_input is not None:
             selected: list[str] = []
             for sec in form_sections.values():
                 inner = user_input.get(sec["key"]) or {}
                 selected.extend(inner.get(_SECTION_FIELD, []) or [])
+            selected.extend(_globs_not_offered(current_globs, form_sections))
             return self.async_create_entry(
                 title="",
                 data={CONF_ENABLED_TOPICS: sorted(set(selected))},
             )
 
-        from .const import DEFAULT_CURATED_GLOBS
-        current_globs = self._entry.options.get(CONF_ENABLED_TOPICS)
-        if current_globs is None:
-            current_globs = list(DEFAULT_CURATED_GLOBS)
-
         schema_dict: dict[Any, Any] = {}
         for sec in form_sections.values():
             choices = sec["choices"]
-            default = [
-                g for g in choices
-                if any(
-                    fnmatch.fnmatchcase(c, g) or fnmatch.fnmatchcase(g, c)
-                    for c in current_globs
-                )
-            ]
+            default = [g for g in choices if any(_overlaps(g, c) for c in current_globs)]
             options_list = [
                 selector.SelectOptionDict(value=glob, label=label)
                 for glob, label in choices.items()
@@ -415,10 +412,6 @@ class SolarAssistantOptionsFlow(OptionsFlow):
 # appended in alphabetical order so a future "Diagnostics" group still appears.
 _GROUP_ORDER = ("Status", "Settings", "Info")
 _TOTALS_DEVICE = "totals"
-# Newer units list their own diagnostics (CPU, storage, …) under system/.
-# The coordinator always creates those sensors, so a checkbox would do nothing.
-# Matched by topic prefix, the same test the coordinator uses.
-_SYSTEM_PREFIX = "system/"
 
 
 def _build_sections(
@@ -435,7 +428,7 @@ def _build_sections(
     """
     buckets: dict[tuple[str, str], list[DeviceMetric]] = {}
     for m in metrics:
-        if m.group == "Ignore" or not m.device or m.topic.startswith(_SYSTEM_PREFIX):
+        if m.group == "Ignore" or not m.device or m.topic in ALWAYS_ON_SYSTEM_TOPICS:
             continue
         buckets.setdefault((m.device, m.group), []).append(m)
 
@@ -466,6 +459,16 @@ def _build_sections(
             items=buckets[(device, group)],
         )
     return sections
+
+
+def _overlaps(a: str, b: str) -> bool:
+    return fnmatch.fnmatchcase(a, b) or fnmatch.fnmatchcase(b, a)
+
+
+def _globs_not_offered(globs: list[str], sections: dict[Any, dict[str, Any]]) -> list[str]:
+    """Saved globs the form had no choice for, e.g. metrics this unit doesn't list."""
+    offered = [c for sec in sections.values() for c in sec["choices"]]
+    return [g for g in globs if not any(_overlaps(g, c) for c in offered)]
 
 
 def _make_section(*, key: str, label: str, items: list[DeviceMetric]) -> dict[str, Any]:
