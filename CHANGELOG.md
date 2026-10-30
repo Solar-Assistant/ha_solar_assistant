@@ -1,3 +1,15 @@
+## v0.3.0 (2026-10-30)
+
+### Feat
+
+- **options**: make the unit's status metrics selectable
+- **coordinator**: take the unit's system metrics from the metrics stream
+
+### Fix
+
+- **config-flow**: keep the unit's system metrics out of the options flow
+- **coordinator**: trust SA's device_class on system metrics
+
 ## v0.2.0 (2026-07-02)
 
 ### Feat
